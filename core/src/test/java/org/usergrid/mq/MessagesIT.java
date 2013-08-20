@@ -246,26 +246,55 @@ public class MessagesIT extends AbstractCoreIT {
 
     String queuePath = "/foo/bar";
 
+    assertFalse(qm.hasMessagesInQueue(queuePath, null));
+    assertFalse(qm.hasOutstandingTransactions(queuePath, null));
+    assertFalse(qm.hasPendingReads(queuePath, null));
+
+    // create 2 messages
     Message message = new Message();
     message.setStringProperty("foo", "bar");
-
-    logger.info("Posting message # to queue /foo/bar: " + message.getUuid());
-
-    assertFalse(qm.hasMessagesInQueue(queuePath, null));
-
+    logger.info("Posting message to queue " + queuePath + ": " + message.getUuid());
     qm.postToQueue(queuePath, message);
-    assertTrue(qm.hasMessagesInQueue(queuePath, null));
 
+    assertTrue(qm.hasMessagesInQueue(queuePath, null));
+    assertFalse(qm.hasOutstandingTransactions(queuePath, null));
+    assertTrue(qm.hasPendingReads(queuePath, null));
+
+    message = new Message();
+    message.setStringProperty("foo", "bar");
+    logger.info("Posting message to queue " + queuePath + ": " + message.getUuid());
+    qm.postToQueue(queuePath, message);
+
+    assertTrue(qm.hasMessagesInQueue(queuePath, null));
+    assertFalse(qm.hasOutstandingTransactions(queuePath, null));
+    assertTrue(qm.hasPendingReads(queuePath, null));
+
+    // take 1 message
     QueueQuery qq = new QueueQuery();
     qq.setTimeout(100);
     qq.setLimit(1);
-    QueueResults qr = qm.getFromQueue(queuePath, qq);
+    QueueResults qr1 = qm.getFromQueue(queuePath, qq);
 
-    assertFalse(qm.hasMessagesInQueue(queuePath, null));
+    assertTrue(qm.hasMessagesInQueue(queuePath, null));
     assertTrue(qm.hasOutstandingTransactions(queuePath, null));
     assertTrue(qm.hasPendingReads(queuePath, null));
 
-    qm.deleteTransaction(queuePath, qr.getMessages().get(0).getTransaction(), qq);
+    // take the 2nd message
+    QueueResults qr2 = qm.getFromQueue(queuePath, qq);
+
+    assertTrue(qm.hasMessagesInQueue(queuePath, null));
+    assertTrue(qm.hasOutstandingTransactions(queuePath, null));
+    assertTrue(qm.hasPendingReads(queuePath, null));
+
+    // commit the 1st transaction
+    qm.deleteTransaction(queuePath, qr1.getMessages().get(0).getTransaction(), qq);
+
+    assertTrue(qm.hasMessagesInQueue(queuePath, null));
+    assertTrue(qm.hasOutstandingTransactions(queuePath, null));
+    assertTrue(qm.hasPendingReads(queuePath, null));
+
+    // commit the 2nd transaction
+    qm.deleteTransaction(queuePath, qr2.getMessages().get(0).getTransaction(), qq);
 
     assertFalse(qm.hasMessagesInQueue(queuePath, null));
     assertFalse(qm.hasOutstandingTransactions(queuePath, null));
